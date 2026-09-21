@@ -6,6 +6,8 @@ python train.py \
     --epoch 400 \
     --stage 3 \
     --val_epoch 20 \
+    --alignment_consistency \
+    --consistency_weight 5e-2 \
     --weight_decay 5e-4 \
     --nesterov \
     --train_way 15 \

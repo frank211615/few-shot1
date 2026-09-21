@@ -229,7 +229,8 @@ class Ours(nn.Module):
         inp,
         way,
         shot,
-        query_shot
+        query_shot,
+        return_alignment=False,
     ):
         """
         Calculate class similarity.
@@ -266,10 +267,16 @@ class Ours(nn.Module):
         # ---------------------------------------------------------
         # FAFM
         # ---------------------------------------------------------
-        scores_F, scores_A = self.FAFM(
+        fafm_output = self.FAFM(
             support,
-            query
+            query,
+            return_alignment=return_alignment,
         )
+
+        if return_alignment:
+            scores_F, scores_A, alignment = fafm_output
+        else:
+            scores_F, scores_A = fafm_output
 
         # Expected shapes:
         #
@@ -301,6 +308,9 @@ class Ours(nn.Module):
             self.w1 * scores_F
             + self.w2 * scores_A
         )
+
+        if return_alignment:
+            return scores, alignment
 
         return scores
 
@@ -338,7 +348,7 @@ class Ours(nn.Module):
     # =============================================================
     # Training forward
     # =============================================================
-    def forward(self, inp):
+    def forward(self, inp, return_alignment=False):
         """
         Training forward.
 
@@ -367,12 +377,18 @@ class Ours(nn.Module):
         # ---------------------------------------------------------
         # Similarity
         # ---------------------------------------------------------
-        scores = self.get_neg_l2_dist(
+        output = self.get_neg_l2_dist(
             inp=inp,
             way=self.way,
             shot=shot,
-            query_shot=query_shot
+            query_shot=query_shot,
+            return_alignment=return_alignment,
         )
+
+        if return_alignment:
+            scores, alignment = output
+        else:
+            scores = output
 
         # ---------------------------------------------------------
         # Temperature scaling
@@ -390,6 +406,9 @@ class Ours(nn.Module):
             logits,
             dim=1
         )
+
+        if return_alignment:
+            return log_prediction, alignment
 
         return log_prediction
 

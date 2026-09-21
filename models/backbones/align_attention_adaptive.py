@@ -195,6 +195,7 @@ class AlignAttention(nn.Module):
 
         returns
             aligned: [Nq, Nway, Lq, C]
+            attention: [Nq, Nway, Lq, shot * Ls]
         """
         n_query, lq, _ = query_tokens.shape
         n_way, shot, ls, _ = support_tokens.shape
@@ -218,7 +219,7 @@ class AlignAttention(nn.Module):
         aligned_inner = torch.einsum("nmls,msd->nmld", attn, v_support)
         aligned = self.out_proj(aligned_inner)
 
-        return aligned
+        return aligned, attn
 
     # ------------------------------------------------------------------
     # Original FAFN-style percentile filtering
@@ -399,7 +400,13 @@ class AlignAttention(nn.Module):
     # ------------------------------------------------------------------
     # Public forward
     # ------------------------------------------------------------------
-    def forward(self, support_features, query_features):
+    def forward(self, support_features, query_features, return_alignment=False):
+        """Compute episode scores and, optionally, cross-alignment maps.
+
+        ``return_alignment`` exposes the normalized query-to-support attention
+        distribution.  It is intentionally optional so the existing FAFN
+        classification path and inference API stay unchanged.
+        """
         support_tokens = self._support_to_tokens(support_features)
         query_tokens = self._query_to_tokens(query_features)
 
@@ -426,7 +433,7 @@ class AlignAttention(nn.Module):
                     .format(support_tokens.size(2), query_tokens.size(1))
                 )
 
-        aligned = self._cross_align(support_tokens, query_tokens)
+        aligned, alignment = self._cross_align(support_tokens, query_tokens)
 
         if self.adaptive:
             scores_filter, scores_align, _ = self._adaptive_gate(
@@ -460,5 +467,8 @@ class AlignAttention(nn.Module):
                     tuple(scores_filter.shape), tuple(scores_align.shape)
                 )
             )
+
+        if return_alignment:
+            return scores_filter, scores_align, alignment
 
         return scores_filter, scores_align

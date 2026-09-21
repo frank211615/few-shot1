@@ -23,7 +23,8 @@ shots = [args.train_shot, args.train_query_shot]
 train_loader = dataloaders.meta_train_dataloader(data_path=pm.train,
                                                 way=train_way,
                                                 shots=shots,
-                                                transform_type=args.train_transform_type)
+                                                transform_type=args.train_transform_type,
+                                                paired_views=args.alignment_consistency)
 
 model = Ours(way=train_way,
             shots=[args.train_shot, args.train_query_shot],
@@ -32,7 +33,10 @@ model = Ours(way=train_way,
             adaptive=False,
             )
 
-train_func = partial(bifrn_train.default_train,train_loader=train_loader)
+train_func = partial(bifrn_train.default_train,
+                     train_loader=train_loader,
+                     consistency_weight=(args.consistency_weight
+                                         if args.alignment_consistency else 0.0))
 
 tm = trainer.Train_Manager(args,path_manager=pm,train_func=train_func)
 

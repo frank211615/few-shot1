@@ -47,6 +47,8 @@ def train_parser():
     parser.add_argument("--seed",help="random seed",type=int,default=42)
     parser.add_argument("--val_epoch",help="number of epochs before eval on val",type=int,default=20)
     parser.add_argument("--checkpoint_interval",help="save a full training checkpoint every N epochs",type=int,default=50)
+    parser.add_argument("--alignment_consistency",help="enable paired-view alignment consistency regularization",action="store_true")
+    parser.add_argument("--consistency_weight",help="weight of the alignment consistency loss",type=float,default=0.05)
     parser.add_argument("--resnet", help="whether use resnet12 as backbone or not",action="store_true")
     parser.add_argument("--nesterov",help="nesterov for sgd",action="store_true")
     parser.add_argument("--batch_size",help="batch size used during pre-training",type=int)
@@ -65,6 +67,9 @@ def train_parser():
     parser.add_argument("--detailed_name", help="whether include training details in the name",action="store_true")
 
     args = parser.parse_args()
+
+    if args.consistency_weight < 0:
+        parser.error("--consistency_weight must be non-negative")
 
     return args
 

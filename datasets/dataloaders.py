@@ -8,19 +8,40 @@ from PIL import Image
 from . import samplers,transform_manager
 
 
-def get_dataset(data_path,is_training,transform_type,pre):
+def get_dataset(data_path,is_training,transform_type,pre,paired_views=False):
+
+    if paired_views and not is_training:
+        raise ValueError('paired_views is only supported for training datasets')
 
     dataset = datasets.ImageFolder(
         data_path,
-        loader = lambda x: image_loader(path=x,is_training=is_training,transform_type=transform_type,pre=pre))
+        loader = lambda x: image_loader(
+            path=x,
+            is_training=is_training,
+            transform_type=transform_type,
+            pre=pre,
+            paired_views=paired_views,
+        ))
 
     return dataset
 
 
 
-def meta_train_dataloader(data_path,way,shots,transform_type):
+def meta_train_dataloader(
+    data_path,
+    way,
+    shots,
+    transform_type,
+    paired_views=False,
+):
 
-    dataset = get_dataset(data_path=data_path,is_training=True,transform_type=transform_type,pre=None)
+    dataset = get_dataset(
+        data_path=data_path,
+        is_training=True,
+        transform_type=transform_type,
+        pre=None,
+        paired_views=paired_views,
+    )
 
     loader = torch.utils.data.DataLoader(
         dataset,
@@ -60,12 +81,21 @@ def normal_train_dataloader(data_path,batch_size,transform_type):
     return loader
 
 
-def image_loader(path,is_training,transform_type,pre):
+def image_loader(path,is_training,transform_type,pre,paired_views=False):
 
     p = Image.open(path)
     p = p.convert('RGB')
 
-    final_transform = transform_manager.get_transform(is_training=is_training,transform_type=transform_type,pre=pre)
+    if paired_views:
+        final_transform = transform_manager.get_paired_consistency_transform(
+            transform_type=transform_type,
+        )
+    else:
+        final_transform = transform_manager.get_transform(
+            is_training=is_training,
+            transform_type=transform_type,
+            pre=pre,
+        )
 
     p = final_transform(p)
 
