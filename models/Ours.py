@@ -5,7 +5,8 @@ import torchvision.models as torch_models
 import numpy as np
 from .backbones import Conv_4,ResNet
 from .backbones.FSRM import FSRM
-from .backbones.align_attention import AlignAttention
+# from .backbones.align_attention import AlignAttention
+from .backbones.align_attention_adaptive import AlignAttention 
 from torchvision.transforms import Resize
 
 
@@ -49,8 +50,9 @@ class Ours(nn.Module):
                 mlp_dropout_rate=0.,
                 attention_dropout=0.,
                 positional_embedding='sine')
-
-        self.FAFM = AlignAttention(hidden_size=self.num_channel, inner_size=self.num_channel, num_patch=self.resolution, feats_size=5, drop_prob=0., shot=self.shots[0], keep_rate=keep_rate)
+        # self.FAFM = AlignAttention(hidden_size=self.num_channel, inner_size=self.num_channel, num_patch=self.resolution, feats_size=5, drop_prob=0., shot=self.shots[0], keep_rate=keep_rate)
+        #自适应测试
+        self.FAFM = AlignAttention(hidden_size=self.num_channel, inner_size=self.num_channel, num_patch=self.resolution, feats_size=5, drop_prob=0., shot=self.shots[0], keep_rate=keep_rate,adaptive=True)
             
 
     def get_feature_map(self,inp):
