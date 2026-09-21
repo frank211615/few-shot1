@@ -46,6 +46,7 @@ def train_parser():
     parser.add_argument("--gpu",help="gpu device",type=int,default=0)
     parser.add_argument("--seed",help="random seed",type=int,default=42)
     parser.add_argument("--val_epoch",help="number of epochs before eval on val",type=int,default=20)
+    parser.add_argument("--checkpoint_interval",help="save a full training checkpoint every N epochs",type=int,default=50)
     parser.add_argument("--resnet", help="whether use resnet12 as backbone or not",action="store_true")
     parser.add_argument("--nesterov",help="nesterov for sgd",action="store_true")
     parser.add_argument("--batch_size",help="batch size used during pre-training",type=int)
@@ -106,6 +107,10 @@ class Train_Manager:
 
     def __init__(self,args,path_manager,train_func):
 
+        checkpoint_interval = getattr(args, 'checkpoint_interval', 50)
+        if checkpoint_interval < 1:
+            raise ValueError("checkpoint_interval must be a positive integer")
+
         seed = args.seed
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
@@ -134,6 +139,9 @@ class Train_Manager:
         self.logger = get_logger('%s.log' % (name))
         self.save_path = 'model_%s.pth' % (name)
         self.writer = SummaryWriter('log_%s' % (name))
+        self.checkpoint_interval = checkpoint_interval
+        self.checkpoint_dir = 'checkpoints_%s' % (name)
+        os.makedirs(self.checkpoint_dir, exist_ok=True)
 
         self.logger.info('display all the hyper-parameters in args:')
         for arg in vars(args):
@@ -144,6 +152,36 @@ class Train_Manager:
         self.args = args
         self.train_func = train_func
         self.pm = path_manager
+
+    def _save_checkpoint(
+        self,
+        model,
+        optimizer,
+        scheduler,
+        epoch,
+        iter_counter,
+        best_val_acc,
+        best_epoch,
+    ):
+        """Save enough state to resume training from a completed epoch."""
+
+        checkpoint_path = os.path.join(
+            self.checkpoint_dir,
+            'checkpoint_epoch_%04d.pth' % epoch,
+        )
+        torch.save(
+            {
+                'epoch': epoch,
+                'iter_counter': iter_counter,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'best_val_acc': best_val_acc,
+                'best_epoch': best_epoch,
+            },
+            checkpoint_path,
+        )
+        self.logger.info('checkpoint saved: %s' % checkpoint_path)
 
     def train(self,model):
 
@@ -211,8 +249,36 @@ class Train_Manager:
 
             scheduler.step()
 
+            if (e + 1) % self.checkpoint_interval == 0:
+                self._save_checkpoint(
+                    model=model,
+                    optimizer=optimizer,
+                    scheduler=scheduler,
+                    epoch=e + 1,
+                    iter_counter=iter_counter,
+                    best_val_acc=best_val_acc,
+                    best_epoch=best_epoch,
+                )
+
+        # Keep a final full-state checkpoint when the total number of epochs
+        # is not an exact multiple of the periodic checkpoint interval.
+        if total_epoch % self.checkpoint_interval != 0:
+            self._save_checkpoint(
+                model=model,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                epoch=total_epoch,
+                iter_counter=iter_counter,
+                best_val_acc=best_val_acc,
+                best_epoch=best_epoch,
+            )
+
         logger.info('training finished!')
-        if args.no_val:
+        if args.no_val or best_epoch == 0:
+            if best_epoch == 0 and not args.no_val:
+                logger.info(
+                    'no validation checkpoint selected; saving final model.'
+                )
             torch.save(model.state_dict(),save_path)
 
         logger.info('------------------------')

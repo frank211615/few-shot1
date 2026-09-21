@@ -28,7 +28,9 @@ train_loader = dataloaders.meta_train_dataloader(data_path=pm.train,
 model = Ours(way=train_way,
             shots=[args.train_shot, args.train_query_shot],
             resnet=args.resnet, 
-            keep_rate=0.5)
+            keep_rate=0.5,
+            adaptive=False,
+            )
 
 train_func = partial(bifrn_train.default_train,train_loader=train_loader)
 
