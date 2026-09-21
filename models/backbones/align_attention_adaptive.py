@@ -46,6 +46,7 @@ class AlignAttention(nn.Module):
         num_patch=25,
         shot=1,
         keep_rate=0.5,
+        drop_prob=0.0,
         adaptive=False,
         gate_temperature=0.5,
         margin_weight=1.0,
@@ -66,6 +67,10 @@ class AlignAttention(nn.Module):
         self.num_patch = num_patch
         self.shot = shot
         self.keep_rate = float(keep_rate)
+        # Kept for API compatibility with the original AlignAttention.
+        # The original implementation accepted this option but did not
+        # apply dropout in its forward pass, so preserve that behavior here.
+        self.drop_prob = float(drop_prob)
         self.adaptive = adaptive
 
         self.gate_temperature = max(float(gate_temperature), 1e-4)
