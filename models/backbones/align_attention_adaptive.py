@@ -42,6 +42,7 @@ class AlignAttention(nn.Module):
         self,
         hidden_size,
         inner_size,
+        feats_size=None,
         num_patch=25,
         shot=1,
         keep_rate=0.5,
@@ -55,6 +56,13 @@ class AlignAttention(nn.Module):
 
         self.hidden_size = hidden_size
         self.inner_size = inner_size
+
+        # Compatibility with the existing Ours.py constructor.
+        # The current implementation infers the runtime spatial/token size
+        # directly from the input tensor, so feats_size is kept for API
+        # compatibility and does not alter the computation.
+        self.feats_size = feats_size
+
         self.num_patch = num_patch
         self.shot = shot
         self.keep_rate = float(keep_rate)
